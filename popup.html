@@ -28,7 +28,7 @@
           </label>
           <label>
             Model
-            <input id="providerModel" placeholder="deepseek-v4-flash">
+            <input id="providerModel" placeholder="deepseek-flash">
           </label>
           <label id="baseUrlRow">
             Base URL
@@ -42,11 +42,27 @@
               <option value="en">English</option>
             </select>
           </label>
+          <label>
+            Title format
+            <select id="titleMode">
+              <option value="original">Original Threadsmith style</option>
+              <option value="tagged">[Label] Topic</option>
+            </select>
+          </label>
+          <label>
+            Allowed labels (one per line)
+            <textarea id="ruleLabels" rows="6" placeholder="BAO-Fig1&#10;BAO-Fig2&#10;BAO-Fig3"></textarea>
+          </label>
+          <label>
+            Additional naming instructions
+            <textarea id="ruleInstructions" rows="3" placeholder="Describe the actual scientific question"></textarea>
+          </label>
           <button id="saveSettings">Save</button>
         </div>
       </details>
     </main>
     <script src="lib/providers.js"></script>
+    <script src="lib/title_rules.js"></script>
     <script src="popup.js"></script>
   </body>
 </html>

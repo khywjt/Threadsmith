@@ -103,17 +103,19 @@
           text: cleanMessageText(contentNode.innerText || contentNode.textContent || "")
         };
       })
-      .filter((item) => item.text && item.text.length > 8 && !isBoilerplateText(item.text) && !seen.has(item.text) && seen.add(item.text))
-      .slice(-14);
+      .filter((item) => item.text && item.text.length > 8 && !isBoilerplateText(item.text) && !seen.has(item.text) && seen.add(item.text));
 
-    if (messages.length) return messages;
+    // Tagged prompts choose their own beginning/end excerpt. Do not discard
+    // the beginning before that selection; retain upstream behavior otherwise.
+    const tagged = config.getTitleRules?.().mode === "tagged";
+    if (messages.length) return tagged ? messages : messages.slice(-14);
 
-    const fallbackText = (scope.innerText || "")
+    const fallbackLines = (scope.innerText || "")
       .split(/\n+/)
       .map((line) => cleanMessageText(line))
-      .filter((line) => line && line.length > 8 && !isBoilerplateText(line))
-      .slice(-10)
-      .join(" ");
+      .filter((line) => line && line.length > 8 && !isBoilerplateText(line));
+    if (tagged) return fallbackLines.map((text) => ({ role: "", text }));
+    const fallbackText = fallbackLines.slice(-10).join(" ");
     return fallbackText ? [{ role: "", text: fallbackText.slice(0, 1600) }] : [];
   }
 
@@ -794,7 +796,7 @@
             <div class="settings-body">
               <label>Provider<select class="si provider-select"></select></label>
               <label>API key<input class="si provider-key" type="password" placeholder="sk-..."></label>
-              <label>Model<input class="si provider-model" placeholder="deepseek-v4-flash"></label>
+              <label>Model<input class="si provider-model" placeholder="deepseek-flash"></label>
               <label class="baseurl-row">Base URL<input class="si provider-baseurl" type="text" placeholder="https://api.example.com"></label>
               <label>Title language<select class="si language-select">
                 <option value="auto">Auto (match chat)</option>
@@ -990,7 +992,7 @@
       list.innerHTML = `<div class="no-sessions">No sessions visible yet.<br>Scroll the ChatGPT sidebar to load your history.</div>`;
       return;
     }
-    targets.forEach((target, index) => list.append(createSessionRow(target, { checked: index === 0 })));
+    targets.forEach((target) => list.append(createSessionRow(target)));
   }
 
   function startWorkflow(root) {

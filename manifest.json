@@ -10,8 +10,7 @@
     "https://api.deepseek.com/*",
     "https://api.openai.com/*",
     "https://openrouter.ai/*",
-    "http://127.0.0.1/*",
-    "http://100.91.8.86/*"
+    "http://127.0.0.1/*"
   ],
   "optional_host_permissions": ["https://*/*"],
   "icons": {
@@ -36,7 +35,7 @@
   "content_scripts": [
     {
       "matches": ["https://chatgpt.com/*", "https://chat.openai.com/*"],
-      "js": ["lib/providers.js", "lib/prompts.js", "lib/validators.js", "content_script.js"],
+      "js": ["lib/providers.js", "lib/prompts.js", "lib/validators.js", "lib/title_rules.js", "content_script.js"],
       "run_at": "document_idle"
     }
   ],

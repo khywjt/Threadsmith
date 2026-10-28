@@ -202,3 +202,18 @@ summary:hover { color: var(--text-2); }
   gap: 9px;
   padding: 0 12px 12px;
 }
+
+/* Tagged-title settings */
+textarea {
+  display: block;
+  width: 100%;
+  box-sizing: border-box;
+  min-height: 54px;
+  padding: 7px 9px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--input-bg);
+  color: var(--text);
+  font: inherit;
+  resize: vertical;
+}

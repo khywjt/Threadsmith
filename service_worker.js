@@ -90,6 +90,11 @@ async function requestChatJson({ transport, payload, label }) {
     max_tokens: isOllama ? Math.max(maxTokens, 1200) : maxTokens,
     stream: false
   };
+  try {
+    if (new URL(transport.baseURL).hostname === "api.deepseek.com") {
+      baseBody.thinking = { type: "disabled" };
+    }
+  } catch { /* malformed URL is handled by the transport layer */ }
   if (isOllama) {
     baseBody.keep_alive = "1m";
     baseBody.think = false;

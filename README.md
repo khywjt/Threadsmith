@@ -55,7 +55,7 @@ Apply clear titles with one-click undo — and a tidied sidebar:
 |---|---|
 | **Provider** | DeepSeek, OpenAI, OpenRouter, or Custom (OpenAI-compatible) |
 | **API key** | Your own key; stored locally |
-| **Model** | Defaults to the provider's default (e.g. `deepseek-v4-flash`) |
+| **Model** | Defaults to the provider's default (e.g. `deepseek-flash`) |
 | **Base URL** | Custom provider only |
 | **Title language** | Auto · 中文 · English |
 

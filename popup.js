@@ -39,6 +39,10 @@ function render() {
   populateProviders();
   $("providerSelect").value = settings.providerId || config.DEFAULT_PROVIDER_ID;
   $("languageSelect").value = settings.titleLanguage || "auto";
+  const rules = settings.titleRules || window.Threadsmith.titleRules.normalizeRules(null);
+  $("titleMode").value = rules.mode;
+  $("ruleLabels").value = rules.labelsText;
+  $("ruleInstructions").value = rules.instructions;
   fillFields();
 }
 
@@ -73,10 +77,20 @@ $("saveSettings").addEventListener("click", async () => {
   const id = $("providerSelect").value;
   const preset = config.PROVIDERS[id] || config.PROVIDERS[config.DEFAULT_PROVIDER_ID];
   const baseURL = $("providerBaseUrl").value.trim() || preset.baseURL || "";
+  const titleRules = {
+    mode: $("titleMode").value,
+    labelsText: $("ruleLabels").value,
+    instructions: $("ruleInstructions").value
+  };
+  if (titleRules.mode === "tagged" && !window.Threadsmith.titleRules.parseLabels(titleRules.labelsText).length) {
+    $("status").textContent = "Add at least one valid label before saving.";
+    return;
+  }
   const next = {
     ...settings,
     providerId: id,
     titleLanguage: $("languageSelect").value || "auto",
+    titleRules,
     providers: {
       ...settings.providers,
       [id]: {
