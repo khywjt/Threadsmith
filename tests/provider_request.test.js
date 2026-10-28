@@ -28,3 +28,25 @@ test("DeepSeek requests use deepseek-flash and non-thinking JSON mode", async ()
   assert.equal(sent.body.response_format.type, "json_object");
   assert.equal(result.parsed.title, "[BAO-Fig3] 时间组织与发展效应");
 });
+
+test("JSON retry keeps the active title schema and uncertainty signal", async () => {
+  const bodies = [];
+  const context = vm.createContext({
+    URL, AbortController, setTimeout, clearTimeout,
+    chrome: { runtime: { onMessage: { addListener() {} }, onInstalled: { addListener() {} } } },
+    fetch: async (_url, options) => {
+      bodies.push(JSON.parse(options.body));
+      const content = bodies.length === 1 ? "not JSON" : '{"title":"研究主题讨论","needs_review":true}';
+      return { ok: true, json: async () => ({ choices: [{ message: { content } }] }) };
+    }
+  });
+  vm.runInContext(fs.readFileSync("service_worker.js", "utf8"), context);
+  const result = await context.requestChatJson({
+    transport: { baseURL: "https://api.deepseek.com", apiKey: "offline-synthetic-value" },
+    payload: { model: "deepseek-flash", messages: [{ role: "system", content: "Return title and needs_review." }], jsonMode: true },
+    label: "Test"
+  });
+  assert.equal(bodies.length, 2);
+  assert.match(bodies[1].messages.at(-1).content, /matching the system instructions/);
+  assert.equal(result.parsed.needs_review, true);
+});

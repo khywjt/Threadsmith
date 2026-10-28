@@ -20,6 +20,15 @@ sensitive research/personal data, leave it unchecked (or use a local model).
 ## What changed
 
 - Defaults to `[LABEL] concise topic` mode with an editable, strict label allowlist; the original style remains available.
+- Research title rules v0.1 use an ownership label and optionally a purpose word
+  such as `审阅·` when it adds useful distinction. The 16–28 character target
+  is guidance; the existing validator's length limits remain mandatory.
+- When the provider reports uncertain ownership or does not report certainty,
+  the candidate requires a valid manual edit before it can be applied. An
+  existing allowed label is retained in the review field in this case.
+- The unchanged original built-in label list is upgraded to the v0.1 defaults
+  when settings are loaded. Custom label lists and naming instructions remain
+  editable and are preserved; loading alone does not rewrite storage.
 - Uses a head-two + tail-eight message excerpt for long threads in tagged mode;
   ordinary mode is unchanged.
 - Preserves leading square brackets lost in the upstream title recovery step.

@@ -238,6 +238,20 @@
     return { parsed: response.parsed, content: response.content || "" };
   }
 
+  function requireManualReviewIfUncertain(parsed, originalTitle, candidate) {
+    if (config.getTitleRules?.().mode !== "tagged" || parsed?.needs_review === false) return;
+
+    // Keep a valid existing label rather than accepting a guessed replacement.
+    // Without one, show the model's untagged topic so the user can choose.
+    const existingLabel = window.Threadsmith.titleRules.getAllowedLabel(originalTitle);
+    const error = new Error(parsed?.needs_review === true || parsed?.needs_review === "true"
+      ? "Uncertain ownership label; choose an allowed label in the preview."
+      : "Provider did not confirm label certainty; review the title before applying.");
+    error.needsReview = true;
+    error.badTitle = existingLabel ? originalTitle : (candidate || originalTitle);
+    throw error;
+  }
+
   async function requestTitleSuggestion(originalTitle, messages, language, options = {}) {
     const { parsed, content } = await requestChatJson({
       messages: prompts.buildTitleMessages({ language, originalTitle, messages, options }),
@@ -246,6 +260,7 @@
     }, "Title");
 
     const title = validators.extractTitleCandidate(parsed, content);
+    requireManualReviewIfUncertain(parsed, originalTitle, title);
     if (!title) throw new Error(`Provider returned no title: ${content.slice(0, 120)}`);
     if (validators.isBadTitle(title, language)) {
       const error = new Error(`Provider returned an unusable title: ${title}`);
@@ -265,7 +280,7 @@
     } catch (error) {
       // Fail fast on provider HTTP errors and on already-rejected titles;
       // only retry when the first pass produced empty/invalid content.
-      if (error.status || /unusable title/i.test(error.message || "")) throw error;
+      if (error.needsReview || error.status || /unusable title/i.test(error.message || "")) throw error;
       return requestTitleSuggestion(originalTitle, messages, language, {
         messageLimit: 8,
         charLimit: 700,
@@ -288,6 +303,7 @@
     }, "Title repair");
 
     const title = validators.extractTitleCandidate(parsed, content);
+    requireManualReviewIfUncertain(parsed, originalTitle, title);
     if (!title || validators.isBadTitle(title, language)) {
       const error = new Error(`Title repair returned unusable title: ${title || content.slice(0, 120)}`);
       if (title) error.badTitle = title;
@@ -316,7 +332,7 @@
     } catch (error) {
       // Provider HTTP errors (quota, auth, rate limit) won't be fixed by a
       // second call — surface them directly instead of burning a repair pass.
-      if (error.status) throw error;
+      if (error.needsReview || error.status) throw error;
       const repaired = await repairTitle(
         target.title,
         messages,
@@ -521,6 +537,29 @@
     const total = allRows(root).length;
     const sel = selectedRows(root).length;
     setCardSummary(root, `${sel} / ${total} selected`);
+  }
+
+  function handleTitleInput(event, root) {
+    if (event.target.matches(".title")) {
+      const row = event.target.closest(".row");
+      if (row?.dataset.review === "true") {
+        const title = validators.normalizeAiTitle(event.target.value);
+        if (title && !validators.isBadTitle(title, languageFor(title))) {
+          event.target.value = title;
+          delete row.dataset.review;
+          row.dataset.ready = "true";
+          const checkbox = row.querySelector('input[type="checkbox"]');
+          checkbox.disabled = false;
+          checkbox.checked = true;
+          setRowStatus(row, "Edited", "ok");
+          updateWorkflowCount(root);
+        }
+      }
+    }
+    const hasTitle = allRows(root).some((r) =>
+      r.dataset.review !== "true" && normalizeText(r.querySelector(".title")?.value || "")
+    );
+    root.querySelector(".wf-apply").disabled = !hasTitle;
   }
 
   function updateIdleCount(root) {
@@ -929,28 +968,7 @@
     });
     root.querySelector(".refresh-btn").addEventListener("click", () => refreshSessions(root));
     root.querySelector(".session-list").addEventListener("change", () => updateWorkflowCount(root));
-    root.querySelector(".session-list").addEventListener("input", (event) => {
-      if (event.target.matches(".title")) {
-        const row = event.target.closest(".row");
-        if (row?.dataset.review === "true") {
-          const title = validators.normalizeAiTitle(event.target.value);
-          if (title && !validators.isBadTitle(title, languageFor(title))) {
-            event.target.value = title;
-            delete row.dataset.review;
-            row.dataset.ready = "true";
-            const checkbox = row.querySelector('input[type="checkbox"]');
-            checkbox.disabled = false;
-            checkbox.checked = true;
-            setRowStatus(row, "Edited", "ok");
-            updateWorkflowCount(root);
-          }
-        }
-      }
-      const hasTitle = allRows(root).some((r) =>
-        r.dataset.review !== "true" && normalizeText(r.querySelector(".title")?.value || "")
-      );
-      root.querySelector(".wf-apply").disabled = !hasTitle;
-    });
+    root.querySelector(".session-list").addEventListener("input", (event) => handleTitleInput(event, root));
 
     root.querySelector(".wf-generate").addEventListener("click", async () => {
       const rows = selectedRows(root);
@@ -1108,7 +1126,9 @@
             row,
             "Needs review",
             "review",
-            `Edit this into one object and one topic using at most one " - ". ${error.message || ""}`.trim()
+            config.getTitleRules?.().mode === "tagged"
+              ? `Choose one allowed [label] and edit the topic before applying. ${error.message || ""}`.trim()
+              : `Edit this into one object and one topic using at most one " - ". ${error.message || ""}`.trim()
           );
         } else {
           skipped++;

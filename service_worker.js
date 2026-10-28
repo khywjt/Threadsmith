@@ -121,7 +121,7 @@ async function requestChatJson({ transport, payload, label }) {
     ...baseBody,
     messages: [
       ...messages,
-      { role: "user", content: "Return ONLY a compact JSON object now, exactly like {\"title\":\"...\"}. No markdown. No explanation." }
+      { role: "user", content: "Return ONLY a compact valid JSON object matching the system instructions. No markdown. No explanation." }
     ],
     max_tokens: Math.max(baseBody.max_tokens, isOllama ? 1800 : 700)
   };
