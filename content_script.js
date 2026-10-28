@@ -71,12 +71,32 @@
       .filter((item) => item.id && item.title && item.title.length < 160 && !seen.has(item.id) && seen.add(item.id));
   }
 
+  function currentSelectionToken() {
+    const target = document.querySelector('[data-app-shell-active-page="true"] [data-chatgpt-conversation-selection-target]');
+    return target?.getAttribute("data-chatgpt-conversation-selection-target") || "";
+  }
+
   function conversationScope(id = getSessionIdFromUrl(location.href)) {
-    if (!id) return null;
+    if (!id || getSessionIdFromUrl(location.href) !== id) return null;
     const escapedId = CSS.escape(id);
     const taggedMessage = document.querySelector(`[data-chatgpt-selection-conversation-id="${escapedId}"]`);
     const composer = document.querySelector(`[data-map-composer-conversation="${escapedId}"]`);
-    return taggedMessage?.closest("main") || composer?.closest("main") || null;
+    const boundScope = taggedMessage?.closest("main") || composer?.closest("main");
+    if (boundScope) return boundScope;
+
+    // The newer ChatGPT shell keeps inactive pages mounted. Only read its
+    // active conversation when the sidebar and URL both identify this target.
+    const selected = [...document.querySelectorAll('a[aria-current="page"][href*="/c/"]')]
+      .some((anchor) => getSessionIdFromUrl(anchor.href || "") === id);
+    if (!selected) return null;
+    const target = document.querySelector('[data-app-shell-active-page="true"] [data-chatgpt-conversation-selection-target]');
+    return target?.closest('[aria-label="Conversation"]') || null;
+  }
+
+  function isPreviousSelection(scope, previousSelection) {
+    if (!scope || !previousSelection) return false;
+    const target = scope.querySelector('[data-chatgpt-conversation-selection-target]');
+    return target?.getAttribute("data-chatgpt-conversation-selection-target") === previousSelection;
   }
 
   function extractConversationText(id = getSessionIdFromUrl(location.href)) {
@@ -121,6 +141,7 @@
 
   async function openConversation(id, url) {
     if (getSessionIdFromUrl(location.href) === id) return waitForConversationContent(id);
+    const previousSelection = currentSelectionToken();
 
     const anchor = [...document.querySelectorAll('a[href*="/c/"]')].find((item) => getSessionIdFromUrl(item.href || "") === id);
     if (anchor) {
@@ -135,10 +156,10 @@
       if (getSessionIdFromUrl(location.href) === id) break;
       await sleep(250);
     }
-    return waitForConversationContent(id);
+    return waitForConversationContent(id, previousSelection);
   }
 
-  async function waitForConversationContent(id = getSessionIdFromUrl(location.href)) {
+  async function waitForConversationContent(id = getSessionIdFromUrl(location.href), previousSelection = "") {
     const started = Date.now();
     while (Date.now() - started < 12000) {
       if (getSessionIdFromUrl(location.href) !== id) {
@@ -146,12 +167,17 @@
         continue;
       }
       const scope = conversationScope(id);
+      if (!scope || isPreviousSelection(scope, previousSelection)) {
+        await sleep(350);
+        continue;
+      }
       const messages = extractConversationText(id);
       const thinking = /thinking|正在|生成中/i.test(scope?.innerText || "");
       if (messages.length && !thinking) return messages;
       await sleep(350);
     }
-    return extractConversationText(id);
+    const scope = conversationScope(id);
+    return scope && !isPreviousSelection(scope, previousSelection) ? extractConversationText(id) : [];
   }
 
   function hostOf(url) {
