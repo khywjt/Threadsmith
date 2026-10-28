@@ -241,14 +241,17 @@
   function requireManualReviewIfUncertain(parsed, originalTitle, candidate) {
     if (config.getTitleRules?.().mode !== "tagged" || parsed?.needs_review === false) return;
 
-    // Keep a valid existing label rather than accepting a guessed replacement.
-    // Without one, show the model's untagged topic so the user can choose.
+    // Keep a valid existing label rather than accepting a guessed replacement,
+    // while retaining the model's more specific topic for the user to review.
     const existingLabel = window.Threadsmith.titleRules.getAllowedLabel(originalTitle);
+    const candidateTopic = String(candidate || "").replace(/^(?:\[[^\]\n]*\]\s*)+/, "").trim();
     const error = new Error(parsed?.needs_review === true || parsed?.needs_review === "true"
       ? "Uncertain ownership label; choose an allowed label in the preview."
       : "Provider did not confirm label certainty; review the title before applying.");
     error.needsReview = true;
-    error.badTitle = existingLabel ? originalTitle : (candidate || originalTitle);
+    error.badTitle = existingLabel && candidateTopic
+      ? `[${existingLabel}] ${candidateTopic}`
+      : (existingLabel ? originalTitle : (candidate || originalTitle));
     throw error;
   }
 

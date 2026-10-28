@@ -146,7 +146,7 @@ test("uncertain ownership without an existing label is shown for manual review",
   assert.equal(view.controls[".wf-apply"].disabled, false);
 });
 
-test("uncertain ownership preserves the valid original label for manual review", async () => {
+test("uncertain ownership preserves the original label and the improved topic for review", async () => {
   const { harness, sent } = await setup(
     [{ title: "[Fig3] 模型猜测的标签", needs_review: true }],
     [{ role: "user", text: "同时提到多个主题，但主要归属尚不明确。" }]
@@ -154,9 +154,31 @@ test("uncertain ownership preserves the valid original label for manual review",
   const view = makeRow("[ENV] 现有环境讨论标题");
   await harness.generatePreview([view.row], view.root);
   assert.equal(sent.length, 1);
-  assert.equal(view.title.value, "[ENV] 现有环境讨论标题");
+  assert.equal(view.title.value, "[ENV] 模型猜测的标签");
   assert.equal(view.row.dataset.review, "true");
   assert.equal(view.checkbox.disabled, true);
+});
+
+test("uncertain ownership keeps the old title when no usable candidate topic exists", async () => {
+  const { harness } = await setup(
+    [{ title: "", needs_review: true }],
+    [{ role: "user", text: "多个主题的归属尚不明确。" }]
+  );
+  const view = makeRow("[ENV] 现有环境讨论标题");
+  await harness.generatePreview([view.row], view.root);
+  assert.equal(view.title.value, "[ENV] 现有环境讨论标题");
+  assert.equal(view.row.dataset.review, "true");
+});
+
+test("uncertain ownership removes multiple guessed labels while keeping the revised topic", async () => {
+  const { harness } = await setup(
+    [{ title: "[Fig2][Fig3] 新的具体检索主题", needs_review: true }],
+    [{ role: "user", text: "多个主题的归属尚不明确。" }]
+  );
+  const view = makeRow("[BAO] 现有讨论标题");
+  await harness.generatePreview([view.row], view.root);
+  assert.equal(view.title.value, "[BAO] 新的具体检索主题");
+  assert.equal(view.row.dataset.review, "true");
 });
 
 test("a missing certainty indicator cannot silently make a guessed label ready", async () => {

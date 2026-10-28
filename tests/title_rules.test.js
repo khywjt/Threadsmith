@@ -125,6 +125,18 @@ test("v0.1 prompt describes ownership, optional purposes and uncertain review", 
   assert.match(system, /do not guess a label/);
   assert.match(system, /needs_review/);
   assert.match(system, /16–28/);
+  assert.match(system, /Do not merely prepend a label/);
+  assert.match(system, /Still summarize the actual topic/);
+});
+
+test("long messages retain their beginning and end and precede the old title hint", async () => {
+  const ns = setup();
+  await ns.config.loadSettings();
+  const messages = [{ role: "user", text: `TASK_START ${"x".repeat(1600)} DELIVERABLE_END` }];
+  const out = ns.prompts.buildTitleMessages({ language: "zh", originalTitle: "模糊旧题", messages });
+  assert.match(out[1].content, /TASK_START/);
+  assert.match(out[1].content, /DELIVERABLE_END/);
+  assert.ok(out[1].content.indexOf("Conversation excerpt:") < out[1].content.indexOf("Existing title (hint only"));
 });
 
 test("v0.1 validators accept the requested examples but reject invalid labels and lengths", async () => {
